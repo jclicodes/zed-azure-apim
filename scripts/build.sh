@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Builds a prebuilt, installable copy of the extension and zips it.
 #
-# Usage: scripts/build.sh <tree-sitter-azure-apim dir> <tree-sitter-c-sharp dir>
-#   WASI_SDK_PATH  wasi-sdk install (Zed uses wasi-sdk 34)
+# Usage: scripts/build.sh [tree-sitter-azure-apim dir]   (default: ../tree-sitter-azure-apim)
+#   WASI_SDK_PATH  optional wasi-sdk 34 install; downloaded into .cache/ if unset
+#
+# The C# grammar is fetched into .cache/ at the revision extension.toml pins.
 #
 # Output: dist/azure-apim/ (the layout Zed keeps under extensions/installed/)
 # and dist/azure-apim.zip. Grammars are compiled exactly as Zed's extension
@@ -10,26 +12,73 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APIM_GRAMMAR="$(cd "$1" && pwd)"
-CSHARP_GRAMMAR="$(cd "$2" && pwd)"
-CLANG="${WASI_SDK_PATH:?set WASI_SDK_PATH}/bin/clang"
+APIM_GRAMMAR="$(cd "${1:-$ROOT/../tree-sitter-azure-apim}" && pwd)"
+CACHE="$ROOT/.cache"
 OUT="$ROOT/dist/azure-apim"
+WASI_SDK_VERSION=34
+
+# Prints `key` from the [grammars.<name>] table of extension.toml.
+grammar_setting() {
+  awk -v section="[grammars.$1]" -v key="$2" '
+    $0 == section { inside = 1; next }
+    /^\[/ { inside = 0 }
+    inside && $1 == key { gsub(/"/, "", $3); print $3; exit }
+  ' "$ROOT/extension.toml"
+}
+
+# Downloads the wasi-sdk release Zed uses into .cache/ unless already there.
+ensure_wasi_sdk() {
+  WASI_SDK_PATH="$CACHE/wasi-sdk-$WASI_SDK_VERSION"
+  [[ -x "$WASI_SDK_PATH/bin/clang" ]] && return
+  local platform
+  case "$(uname -s)-$(uname -m)" in
+    Darwin-arm64) platform=arm64-macos ;;
+    Darwin-x86_64) platform=x86_64-macos ;;
+    Linux-x86_64) platform=x86_64-linux ;;
+    Linux-aarch64) platform=arm64-linux ;;
+    *) echo "no wasi-sdk build for $(uname -sm); set WASI_SDK_PATH" >&2; exit 1 ;;
+  esac
+  echo "downloading wasi-sdk $WASI_SDK_VERSION ($platform)"
+  rm -rf "$WASI_SDK_PATH"
+  mkdir -p "$WASI_SDK_PATH"
+  curl -fsSL "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-$WASI_SDK_VERSION/wasi-sdk-$WASI_SDK_VERSION.0-$platform.tar.gz" |
+    tar -xz -C "$WASI_SDK_PATH" --strip-components=1
+}
+
+# Shallow-fetches a grammar repository at its pinned revision into .cache/.
+fetch_grammar() {
+  local name="$1" dir="$CACHE/$1"
+  local repository rev
+  repository="$(grammar_setting "$name" repository)"
+  rev="$(grammar_setting "$name" rev)"
+  if [[ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" != "$rev" ]]; then
+    echo "fetching $name @ ${rev:0:12}" >&2
+    rm -rf "$dir"
+    git init -q "$dir"
+    git -C "$dir" fetch -q --depth 1 "$repository" "$rev"
+    git -C "$dir" checkout -q FETCH_HEAD
+  fi
+  echo "$dir"
+}
 
 compile_grammar() {
   local name="$1" dir="$2"
   local scanner=()
   [[ -f "$dir/src/scanner.c" ]] && scanner=("$dir/src/scanner.c")
-  "$CLANG" -fPIC -shared -Os "-Wl,--export=tree_sitter_${name}" \
+  "$WASI_SDK_PATH/bin/clang" -fPIC -shared -Os "-Wl,--export=tree_sitter_${name}" \
     -o "$OUT/grammars/${name}.wasm" -I "$dir/src" "$dir/src/parser.c" "${scanner[@]}"
 }
 
 # The wasm must come from the commit extension.toml pins, or a later dev
 # install / registry build would ship a different grammar.
 APIM_REV="$(git -C "$APIM_GRAMMAR" rev-parse HEAD)"
-if ! grep -q "rev = \"${APIM_REV}\"" "$ROOT/extension.toml" || [[ -n "$(git -C "$APIM_GRAMMAR" status --porcelain)" ]]; then
+if [[ "$(grammar_setting azure_apim rev)" != "$APIM_REV" || -n "$(git -C "$APIM_GRAMMAR" status --porcelain)" ]]; then
   echo "extension.toml must pin azure_apim to ${APIM_REV}, and the grammar tree must be clean" >&2
   exit 1
 fi
+
+[[ -n "${WASI_SDK_PATH:-}" ]] || ensure_wasi_sdk
+CSHARP_GRAMMAR="$(fetch_grammar c_sharp)"
 
 rm -rf "$OUT" "$ROOT/dist/azure-apim.zip"
 mkdir -p "$OUT/grammars"

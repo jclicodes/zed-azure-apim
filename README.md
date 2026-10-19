@@ -57,13 +57,19 @@ your Zed `settings.json`:
 ## Building
 
 The sources are this directory plus the `tree-sitter-azure-apim` grammar
-repository. `extension.toml` pins the grammar commit.
+repository, checked out alongside it. `extension.toml` pins both grammar
+commits; the build refuses to run if the local grammar checkout isn't clean
+and at the pinned commit.
 
 ```sh
-python3 scripts/gen_snippets.py          # regenerate snippets from data/apim-policies.json
-WASI_SDK_PATH=/path/to/wasi-sdk-34 \
-  scripts/build.sh ../tree-sitter-azure-apim ../tree-sitter-c-sharp
+python3 scripts/gen_snippets.py   # regenerate snippets from data/apim-policies.json
+scripts/build.sh                  # writes dist/azure-apim/ and dist/azure-apim.zip
 ```
+
+The first build downloads wasi-sdk 34 (the version Zed uses) and the pinned
+tree-sitter-c-sharp commit into `.cache/`. Set `WASI_SDK_PATH` to use an
+existing wasi-sdk, or pass a grammar directory to `build.sh` if it isn't at
+`../tree-sitter-azure-apim`.
 
 `data/apim-policies.json` is compiled from the Microsoft Learn policy reference.
 
