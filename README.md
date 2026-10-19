@@ -73,8 +73,10 @@ existing wasi-sdk, or pass a grammar directory to `build.sh` if it isn't at
 
 `data/apim-policies.json` is compiled from the Microsoft Learn policy reference.
 
-Once the grammar repository is published at the URL in `extension.toml`, this
-directory also works with **zed: install dev extension**.
+This directory also works with **zed: install dev extension**. Zed fetches the
+grammar from the `file://` checkout `extension.toml` points at, so commit
+grammar changes and bump `rev` before reinstalling. Before publishing, point
+`repository` at the grammar's public URL.
 
 ## Credits
 

@@ -8,8 +8,9 @@ repository = "https://github.com/jclicodes/zed-azure-apim"
 
 snippets = ["./snippets/apim policy.json", "./snippets/apim expression.json"]
 
+# Local checkout until the grammar is published; switch to its GitHub URL then.
 [grammars.azure_apim]
-repository = "https://github.com/jclicodes/tree-sitter-azure-apim"
+repository = "file:///Users/jake/workspace/personal/tree-sitter-azure-apim"
 rev = "23fd426cc9749321d12dd3eabc549a7f8f6849ab"
 
 # Bundled so C# expressions are highlighted without the C# extension installed.
