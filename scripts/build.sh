@@ -5,6 +5,8 @@
 #   WASI_SDK_PATH  optional wasi-sdk 34 install; downloaded into .cache/ if unset
 #
 # The C# grammar is fetched into .cache/ at the revision extension.toml pins.
+# Also needs Node.js (server bundle and tests) and Rust with rustup (the
+# extension's wasm, as Zed builds it).
 #
 # Output: dist/azure-apim/ (the layout Zed keeps under extensions/installed/)
 # and dist/azure-apim.zip. Grammars are compiled exactly as Zed's extension
@@ -80,9 +82,20 @@ fi
 [[ -n "${WASI_SDK_PATH:-}" ]] || ensure_wasi_sdk
 CSHARP_GRAMMAR="$(fetch_grammar c_sharp)"
 
+# The language server bundle is committed so a dev install works from a fresh
+# clone; rebuild and test it, and flag it if the committed copy is stale.
+(cd "$ROOT/server" && npm ci --silent && npm test --silent)
+if ! git -C "$ROOT" diff --quiet -- server/bundle; then
+  echo "warning: server/bundle changed; commit it so dev installs get this server" >&2
+fi
+
+rustup target add wasm32-wasip2 >/dev/null 2>&1 || true
+cargo build --manifest-path "$ROOT/Cargo.toml" --release --target wasm32-wasip2 --target-dir "$ROOT/target"
+
 rm -rf "$OUT" "$ROOT/dist/azure-apim.zip"
 mkdir -p "$OUT/grammars"
 
+cp "$ROOT/target/wasm32-wasip2/release/azure_apim.wasm" "$OUT/extension.wasm"
 compile_grammar azure_apim "$APIM_GRAMMAR"
 compile_grammar c_sharp "$CSHARP_GRAMMAR"
 

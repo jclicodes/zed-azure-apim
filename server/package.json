@@ -1,0 +1,22 @@
+{
+  "name": "apim-language-server",
+  "version": "0.1.0",
+  "description": "Language server for Azure API Management policy XML: completion and hover.",
+  "license": "Unlicense",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/server.ts --bundle --platform=node --format=cjs --target=node20 --minify --legal-comments=none --outfile=bundle/apim-language-server.cjs",
+    "check": "tsc --noEmit",
+    "test": "npm run build && node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "vscode-languageserver": "^10.1.2",
+    "vscode-languageserver-textdocument": "^1.0.15"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}

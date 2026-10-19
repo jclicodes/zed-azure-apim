@@ -1,6 +1,6 @@
 # Azure APIM Policies for Zed
 
-Syntax support for Azure API Management policy documents: XML with C# policy
+Editor support for Azure API Management policy documents: XML with C# policy
 expressions.
 
 - **Highlighting**: a dedicated tree-sitter grammar (`tree-sitter-azure-apim`)
@@ -12,20 +12,29 @@ expressions.
   bundled C# grammar. The C# extension doesn't need to be installed.
 - **JSON bodies**: literal `<set-body>{...}</set-body>` content is highlighted as JSON.
 - **`{{named-values}}`**: highlighted as named-value references in attributes and text.
-- **Autocomplete** (snippets):
-  - In XML, type `<` and part of a policy name (`<set-h`, `<validate-j`, ...)
-    to insert any of the ~70 documented policies, with their required
-    attributes and enum choices as tab stops. The section and structural elements
-    (`<policies`, `<choose`, `<when`, ...) are covered too.
-  - Inside `@(...)`/`@{...}`, completions cover the `context` object model
-    (`context.Request.Headers.GetValueOrDefault`, `context.Variables...`), the
-    APIM extension methods (`AsJwt`, `AsBasic`, ...) and the .NET types the gateway
-    allows in expressions.
+- **Completion**, from a bundled language server (`server/`), aware of where
+  the cursor is:
+  - Elements: only the policies allowed in the current section (`rate-limit`
+    in `<inbound>`, `forward-request` in `<backend>`, the section's policies
+    inside `<when>`), and a policy's own child elements. Required attributes
+    and documented choices become tab stops. Works after `<` or by typing a
+    policy name straight into a section.
+  - Attributes not yet set on the element, required ones first, then their
+    documented values (`exists-action` → `override`, `skip`, ...).
+  - Closing tags, and `{{named-values}}` referenced anywhere in the workspace
+    or defined in an APIOps `namedValues/` folder.
+  - Inside `@(...)`/`@{...}`: members of the `context` object model, followed
+    through chains, locals, lambdas and casts
+    (`context.Request.Headers.GetValueOrDefault("Authorization", "").AsJwt()?.Claims.`),
+    APIM's extension methods, common members of the .NET types the gateway
+    allows, and the allowed type names.
+- **Hover**: policy and attribute documentation from the Microsoft Learn
+  reference, and signatures for expression members.
 - **Editing**: closing tags are inserted automatically, there's a structural
   outline (`cmd-shift-o`), bracket matching for tags and expressions, and
   comment toggling.
 
-There is no language server. Validation still happens when you deploy the policy.
+There are no diagnostics yet: validation still happens when you deploy the policy.
 
 ## Install
 
@@ -39,8 +48,9 @@ unzip azure-apim.zip -d ~/Library/Application\ Support/Zed/extensions/installed/
 On Linux the directory is `~/.local/share/zed/extensions/installed/`. To uninstall,
 use the Extensions panel or delete the `azure-apim` directory.
 
-The grammars ship precompiled to WebAssembly, so this needs no Rust, git or
-clang on your machine.
+The grammars and extension ship precompiled to WebAssembly, so this needs no
+Rust, git or clang on your machine. The language server runs on the Node.js
+Zed already manages.
 
 ## File association
 
@@ -59,10 +69,9 @@ your Zed `settings.json`:
 The sources are this directory plus the `tree-sitter-azure-apim` grammar
 repository, checked out alongside it. `extension.toml` pins both grammar
 commits; the build refuses to run if the local grammar checkout isn't clean
-and at the pinned commit.
+and at the pinned commit. Building needs Node.js and Rust (with rustup).
 
 ```sh
-python3 scripts/gen_snippets.py   # regenerate snippets from data/apim-policies.json
 scripts/build.sh                  # writes dist/azure-apim/ and dist/azure-apim.zip
 ```
 
@@ -71,7 +80,17 @@ tree-sitter-c-sharp commit into `.cache/`. Set `WASI_SDK_PATH` to use an
 existing wasi-sdk, or pass a grammar directory to `build.sh` if it isn't at
 `../tree-sitter-azure-apim`.
 
-`data/apim-policies.json` is compiled from the Microsoft Learn policy reference.
+Layout:
+
+- `server/`: the language server (TypeScript, `npm test` builds and tests it).
+  `server/bundle/` is its build output, committed because the Rust extension
+  (`src/lib.rs`) embeds it with `include_str!`; `build.sh` warns if it's stale.
+- `data/apim-schema.json`: policies, elements and attributes, extracted from
+  the Microsoft Learn policy reference at a pinned docs commit by
+  `scripts/extract_schema.py`. The expression type model is hand-written in
+  `server/src/csharp-model.ts`.
+- `snippets/`: a few multi-line expression idioms; everything else comes from
+  the language server.
 
 This directory also works with **zed: install dev extension**. Zed fetches the
 grammar from the `file://` checkout `extension.toml` points at, so commit

@@ -3,10 +3,15 @@ name = "Azure APIM Policies"
 version = "0.1.0"
 schema_version = 1
 authors = ["jcli <jake@jcli.codes>"]
-description = "Azure API Management policy XML with C# policy expression highlighting and policy snippets."
+description = "Azure API Management policy XML: C# policy expression highlighting, completion and hover."
 repository = "https://github.com/jclicodes/zed-azure-apim"
 
-snippets = ["./snippets/apim policy.json", "./snippets/apim expression.json"]
+snippets = ["./snippets/apim expression.json"]
+
+# Completion and hover; the server is bundled into the extension (see server/).
+[language_servers.apim-language-server]
+name = "APIM Language Server"
+languages = ["APIM Policy"]
 
 # Local checkout until the grammar is published; switch to its GitHub URL then.
 [grammars.azure_apim]
