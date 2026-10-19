@@ -41,6 +41,11 @@ adapted from [zed-extensions/csharp](https://github.com/zed-extensions/csharp)
 (Apache-2.0). The C# grammar is
 [tree-sitter-c-sharp](https://github.com/tree-sitter/tree-sitter-c-sharp) (MIT).
 
+Policy descriptions in `data/apim-schema.json` are extracted from the
+[Microsoft Learn API Management policy reference](https://learn.microsoft.com/azure/api-management/api-management-policies)
+(CC BY 4.0). These files keep their original licenses; everything else is
+released into the public domain under the [Unlicense](LICENSE).
+
 ---
 
 ## ⚠️ Disclaimer

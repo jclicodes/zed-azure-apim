@@ -13,10 +13,9 @@ snippets = ["./snippets/apim expression.json"]
 name = "APIM Language Server"
 languages = ["APIM Policy"]
 
-# Local checkout until the grammar is published; switch to its GitHub URL then.
 [grammars.azure_apim]
-repository = "file:///Users/jake/workspace/personal/tree-sitter-azure-apim"
-rev = "23fd426cc9749321d12dd3eabc549a7f8f6849ab"
+repository = "https://github.com/jclicodes/tree-sitter-azure-apim"
+rev = "1f44d2a42847b34ed2fe6105c38d4e428e1a6a53"
 
 # Bundled so C# expressions are highlighted without the C# extension installed.
 # Same revision as zed-extensions/csharp.
