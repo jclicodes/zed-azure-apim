@@ -5,7 +5,7 @@ expressions.
 
 It has:
 
-- highlighting via a custom Treesitter grammar including inline JSON and C#
+- highlighting via a [custom Treesitter grammar](https://github.com/jclicodes/tree-sitter-azure-apim) including inline JSON and C#
 - completions from a bundled language server
 - hover context.
 
